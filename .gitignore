@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Gradle
+.gradle/
+build/
+
+# Kotlin compiler sessions
+.kotlin/
+
+# IntelliJ Platform Gradle Plugin cache
+.intellijPlatform/
+
+# IDE local files
+*.iml
+.idea/
