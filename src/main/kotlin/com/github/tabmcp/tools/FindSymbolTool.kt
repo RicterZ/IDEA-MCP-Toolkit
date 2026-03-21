@@ -2,6 +2,7 @@ package com.github.tabmcp.tools
 
 import com.github.tabmcp.AbstractMcpTool
 import com.github.tabmcp.Response
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.JavaPsiFacade
@@ -49,13 +50,13 @@ class FindSymbolTool : AbstractMcpTool<FindSymbolArgs>(FindSymbolArgs.serializer
         val projectFileIndex = ProjectFileIndex.getInstance(project)
         val basePath = project.basePath ?: ""
 
-        val classes: Array<PsiClass> = if (args.name.contains('.')) {
-            // Fully qualified name — exact lookup
-            val found = JavaPsiFacade.getInstance(project).findClass(args.name, scope)
-            if (found != null) arrayOf(found) else emptyArray()
-        } else {
-            // Short name — search all classes with that simple name
-            PsiShortNamesCache.getInstance(project).getClassesByName(args.name, scope)
+        val classes: Array<PsiClass> = runReadAction {
+            if (args.name.contains('.')) {
+                val found = JavaPsiFacade.getInstance(project).findClass(args.name, scope)
+                if (found != null) arrayOf(found) else emptyArray()
+            } else {
+                PsiShortNamesCache.getInstance(project).getClassesByName(args.name, scope)
+            }
         }
 
         if (classes.isEmpty()) {
@@ -63,33 +64,35 @@ class FindSymbolTool : AbstractMcpTool<FindSymbolArgs>(FindSymbolArgs.serializer
         }
 
         val results = buildJsonArray {
-            classes.forEach { psiClass ->
-                val qualifiedName = psiClass.qualifiedName ?: return@forEach
-                val virtualFile = psiClass.containingFile?.virtualFile ?: return@forEach
-                val filePath = virtualFile.path
+            runReadAction {
+                classes.forEach { psiClass ->
+                    val qualifiedName = psiClass.qualifiedName ?: return@forEach
+                    val virtualFile = psiClass.containingFile?.virtualFile ?: return@forEach
+                    val filePath = virtualFile.path
 
-                // Make path relative to project root if possible
-                val relativePath = if (filePath.startsWith(basePath)) {
-                    filePath.removePrefix("$basePath/")
-                } else {
-                    filePath
+                    // Make path relative to project root if possible
+                    val relativePath = if (filePath.startsWith(basePath)) {
+                        filePath.removePrefix("$basePath/")
+                    } else {
+                        filePath
+                    }
+
+                    val kind = when {
+                        psiClass.isInterface -> "interface"
+                        psiClass.isEnum -> "enum"
+                        psiClass.isAnnotationType -> "annotation"
+                        else -> "class"
+                    }
+
+                    val isInProject = projectFileIndex.isInContent(virtualFile)
+
+                    add(buildJsonObject {
+                        put("qualifiedName", qualifiedName)
+                        put("kind", kind)
+                        put("path", relativePath)
+                        put("inProject", isInProject)
+                    })
                 }
-
-                val kind = when {
-                    psiClass.isInterface -> "interface"
-                    psiClass.isEnum -> "enum"
-                    psiClass.isAnnotationType -> "annotation"
-                    else -> "class"
-                }
-
-                val isInProject = projectFileIndex.isInContent(virtualFile)
-
-                add(buildJsonObject {
-                    put("qualifiedName", qualifiedName)
-                    put("kind", kind)
-                    put("path", relativePath)
-                    put("inProject", isInProject)
-                })
             }
         }
 
