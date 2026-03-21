@@ -20,7 +20,8 @@ import kotlinx.serialization.json.put
 data class GetTypeHierarchyArgs(
     val className: String = "",         // simple or fully qualified class name
     val hierarchyType: String = "both", // "super", "sub", or "both"
-    val depth: Int = 3
+    val depth: Int = 3,
+    val maxResults: Int = 50
 )
 
 class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierarchyArgs.serializer()) {
@@ -32,7 +33,8 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
         Parameters:
           - className: simple name (e.g. "Response") or fully qualified name (e.g. "com.example.Response") (required)
           - hierarchyType: "super" for parent classes/interfaces, "sub" for subclasses/implementations, "both" for both directions (default: "both")
-          - depth: how many levels deep to traverse (default: 3)
+          - depth: how many levels deep to traverse supertypes (default: 3)
+          - maxResults: maximum number of subtypes to return (default: 50)
         Each result includes the qualified name, kind, and file path.
     """.trimIndent()
 
@@ -49,7 +51,11 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
             })
             put("depth", buildJsonObject {
                 put("type", "integer")
-                put("description", "Levels deep to traverse (default: 3)")
+                put("description", "Levels deep to traverse supertypes (default: 3)")
+            })
+            put("maxResults", buildJsonObject {
+                put("type", "integer")
+                put("description", "Maximum number of subtypes to return (default: 50)")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("className")) })
@@ -144,7 +150,7 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
                         var count = 0
                         ClassInheritorsSearch.search(psiClass, scope, true)
                             .forEach { subClass ->
-                                if (count >= 50) return@forEach
+                                if (count >= args.maxResults) return@forEach
                                 add(buildJsonObject {
                                     put("relation", if (psiClass.isInterface) "implements" else "extends")
                                     psiClassToEntries(this, subClass)
