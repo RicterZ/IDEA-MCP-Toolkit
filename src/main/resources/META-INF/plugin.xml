@@ -5,6 +5,8 @@
     <description>A comprehensive MCP (Model Context Protocol) toolkit for JetBrains IDEA, exposing code intelligence tools — file reading, symbol search, type hierarchy, find usages, Spring URL mapping, and more — so AI assistants like Claude can deeply understand your codebase.</description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+    <depends>com.intellij.spring.mvc</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <httpRequestHandler implementation="com.github.tabmcp.MCPService"/>
