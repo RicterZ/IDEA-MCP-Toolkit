@@ -33,7 +33,7 @@ class FindReferencingSymbolsTool : AbstractMcpTool<FindReferencingSymbolsArgs>(F
         Parameters:
           - symbolName: method or field name to find usages of (required), e.g. "ok", "getUser"
           - className: fully qualified class name to narrow down which symbol, e.g. "com.example.Response" (optional but recommended to avoid ambiguity)
-          - maxResults: maximum number of references to return (default: 30)
+          - maxResults: maximum number of references to return (default: 30); set to 0 for no limit
         Tip: use find_symbol first to get the exact class name, then pass it here.
     """.trimIndent()
 
@@ -50,7 +50,7 @@ class FindReferencingSymbolsTool : AbstractMcpTool<FindReferencingSymbolsArgs>(F
             })
             put("maxResults", buildJsonObject {
                 put("type", "integer")
-                put("description", "Maximum number of references to return (default: 30)")
+                put("description", "Maximum number of references to return (default: 30); set to 0 for no limit")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("symbolName")) })
@@ -67,6 +67,7 @@ class FindReferencingSymbolsTool : AbstractMcpTool<FindReferencingSymbolsArgs>(F
 
         val results = buildJsonArray {
             runReadAction {
+                val limit = if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults
                 // Collect candidate PSI elements to search references for
                 val targets = mutableListOf<com.intellij.psi.PsiElement>()
 
@@ -94,10 +95,10 @@ class FindReferencingSymbolsTool : AbstractMcpTool<FindReferencingSymbolsArgs>(F
 
                 var count = 0
                 targets.forEach { target ->
-                    if (count >= args.maxResults) return@forEach
+                    if (count >= limit) return@forEach
                     val refs = ReferencesSearch.search(target, scope).findAll()
                     refs.forEach ref@{ ref ->
-                        if (count >= args.maxResults) return@ref
+                        if (count >= limit) return@ref
                         val element = ref.element
                         val vf = element.containingFile?.virtualFile ?: return@ref
                         val filePath = vf.path.let {

@@ -40,7 +40,7 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
           - searchMethods: include method and field matches (default: true)
           - searchFiles: include file name matches (default: true)
           - searchSpringUrls: include Spring MVC @RequestMapping URL matches (default: true)
-          - maxResults: max results per category (default: 30)
+          - maxResults: max results per category (default: 30); set to 0 for no limit
         Each result includes its kind, qualified name or URL, and file path for use with get_file_text_by_path.
     """.trimIndent()
 
@@ -69,7 +69,7 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
             })
             put("maxResults", buildJsonObject {
                 put("type", "integer")
-                put("description", "Max results per category (default: 30)")
+                put("description", "Max results per category (default: 30); set to 0 for no limit")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("query")) })
@@ -90,6 +90,7 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
         } else path
 
         val results = buildJsonObject {
+            val limit = if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults
 
             // ── Classes ───────────────────────────────────────────────────────
             if (args.searchClasses) {
@@ -100,11 +101,11 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                         // collect all class names that contain the query
                         cache.allClassNames
                             .filter { it.contains(query, ignoreCase = true) }
-                            .take(args.maxResults * 2)
+                            .take(if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults * 2)
                             .forEach outer@{ className ->
-                                if (count >= args.maxResults) return@outer
+                                if (count >= limit) return@outer
                                 cache.getClassesByName(className, scope).forEach { psiClass ->
-                                    if (count >= args.maxResults) return@forEach
+                                    if (count >= limit) return@forEach
                                     val fqn = psiClass.qualifiedName ?: return@forEach
                                     val vf = psiClass.containingFile?.virtualFile ?: return@forEach
                                     val kind = when {
@@ -135,11 +136,11 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                         // Methods
                         cache.allMethodNames
                             .filter { it.contains(query, ignoreCase = true) }
-                            .take(args.maxResults * 2)
+                            .take(if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults * 2)
                             .forEach outer@{ methodName ->
-                                if (count >= args.maxResults) return@outer
+                                if (count >= limit) return@outer
                                 cache.getMethodsByName(methodName, scope).forEach { method ->
-                                    if (count >= args.maxResults) return@forEach
+                                    if (count >= limit) return@forEach
                                     val vf = method.containingFile?.virtualFile ?: return@forEach
                                     val containingClass = method.containingClass?.qualifiedName ?: ""
                                     add(buildJsonObject {
@@ -154,11 +155,11 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                         // Fields
                         cache.allFieldNames
                             .filter { it.contains(query, ignoreCase = true) }
-                            .take(args.maxResults * 2)
+                            .take(if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults * 2)
                             .forEach outer@{ fieldName ->
-                                if (count >= args.maxResults) return@outer
+                                if (count >= limit) return@outer
                                 cache.getFieldsByName(fieldName, scope).forEach { field ->
-                                    if (count >= args.maxResults) return@forEach
+                                    if (count >= limit) return@forEach
                                     val vf = field.containingFile?.virtualFile ?: return@forEach
                                     val containingClass = field.containingClass?.qualifiedName ?: ""
                                     add(buildJsonObject {
@@ -180,7 +181,7 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                     var count = 0
                     runReadAction {
                         projectFileIndex.iterateContent { vf ->
-                            if (count >= args.maxResults) return@iterateContent false
+                            if (count >= limit) return@iterateContent false
                             if (!vf.isDirectory && vf.name.contains(query, ignoreCase = true)) {
                                 add(buildJsonObject {
                                     put("kind", "file")
@@ -201,10 +202,10 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                     var count = 0
                     runReadAction {
                         ModuleManager.getInstance(project).modules.forEach { module ->
-                            if (count >= args.maxResults) return@forEach
+                            if (count >= limit) return@forEach
                             AnnotatedRequestMappingsProcessor.processAnnotationMappings(
                                 { mapping: UrlMappingElement ->
-                                    if (count >= args.maxResults) return@processAnnotationMappings false
+                                    if (count >= limit) return@processAnnotationMappings false
                                     val url = mapping.url ?: return@processAnnotationMappings true
                                     val normalizedQuery = query.trimStart('/')
                                     val normalizedUrl = url.trimStart('/')

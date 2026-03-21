@@ -34,7 +34,7 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
           - filePattern: glob to filter files, e.g. "*.kt", "*.java" (optional, default: all files)
           - isRegex: treat pattern as a regular expression (default: false)
           - ignoreCase: case-insensitive search (default: true)
-          - maxResults: maximum number of matches to return (default: 50)
+          - maxResults: maximum number of matches to return (default: 50); set to 0 for no limit
     """.trimIndent()
 
     override val inputSchema: JsonObject = buildJsonObject {
@@ -58,7 +58,7 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
             })
             put("maxResults", buildJsonObject {
                 put("type", "integer")
-                put("description", "Maximum number of matches to return (default: 50)")
+                put("description", "Maximum number of matches to return (default: 50); set to 0 for no limit")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("pattern")) })
@@ -88,11 +88,12 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
 
         val results = buildJsonArray {
             var count = 0
+            val limit = if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults
             val projectFileIndex = ProjectFileIndex.getInstance(project)
 
             runReadAction {
                 projectFileIndex.iterateContent { virtualFile: VirtualFile ->
-                    if (count >= args.maxResults) return@iterateContent false
+                    if (count >= limit) return@iterateContent false
                     if (virtualFile.isDirectory) return@iterateContent true
                     if (!virtualFile.isValid) return@iterateContent true
                     if (fileRegex != null && !fileRegex.containsMatchIn(virtualFile.name)) return@iterateContent true
@@ -111,7 +112,7 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
                     }
 
                     text.lines().forEachIndexed { index, line ->
-                        if (count >= args.maxResults) return@forEachIndexed
+                        if (count >= limit) return@forEachIndexed
                         if (regex.containsMatchIn(line)) {
                             add(buildJsonObject {
                                 put("path", relativePath)
