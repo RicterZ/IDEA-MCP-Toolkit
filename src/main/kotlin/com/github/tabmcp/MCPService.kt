@@ -9,6 +9,7 @@ import com.github.tabmcp.tools.GetFileTextByPathTool
 import com.github.tabmcp.tools.GetSymbolsOverviewTool
 import com.github.tabmcp.tools.GetTabFileTextTool
 import com.github.tabmcp.tools.GetTypeHierarchyTool
+import com.github.tabmcp.tools.InitializeToolkitTool
 import com.github.tabmcp.tools.ListOpenTabsTool
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.BufferExposingByteArrayOutputStream
@@ -45,6 +46,7 @@ class MCPService : RestService() {
     private val sessions = ConcurrentHashMap<String, Channel>()
 
     private val tools: List<AbstractMcpTool<*>> = listOf(
+        InitializeToolkitTool(),
         GetCurrentFileTextTool(),
         GetFileTextByPathTool(),
         ListOpenTabsTool(),
