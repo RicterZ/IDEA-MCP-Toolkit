@@ -1,5 +1,7 @@
 # IDEA MCP Toolkit
 
+English | [中文](./README_zh.md)
+
 A comprehensive [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) plugin for JetBrains IDEA that exposes code intelligence tools, enabling AI assistants like Claude to deeply understand your codebase directly through the IDE.
 
 ## Features
