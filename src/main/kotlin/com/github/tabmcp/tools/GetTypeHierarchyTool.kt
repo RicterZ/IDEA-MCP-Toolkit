@@ -34,7 +34,7 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
           - className: simple name (e.g. "Response") or fully qualified name (e.g. "com.example.Response") (required)
           - hierarchyType: "super" for parent classes/interfaces, "sub" for subclasses/implementations, "both" for both directions (default: "both")
           - depth: how many levels deep to traverse supertypes (default: 3)
-          - maxResults: maximum number of subtypes to return (default: 50)
+          - maxResults: maximum number of subtypes to return (default: 50); set to 0 for no limit
         Each result includes the qualified name, kind, and file path.
     """.trimIndent()
 
@@ -55,7 +55,7 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
             })
             put("maxResults", buildJsonObject {
                 put("type", "integer")
-                put("description", "Maximum number of subtypes to return (default: 50)")
+                put("description", "Maximum number of subtypes to return (default: 50); set to 0 for no limit")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("className")) })
@@ -148,9 +148,10 @@ class GetTypeHierarchyTool : AbstractMcpTool<GetTypeHierarchyArgs>(GetTypeHierar
                 if (args.hierarchyType == "sub" || args.hierarchyType == "both") {
                     put("subtypes", buildJsonArray {
                         var count = 0
+                        val limit = if (args.maxResults <= 0) Int.MAX_VALUE else args.maxResults
                         ClassInheritorsSearch.search(psiClass, scope, true)
                             .forEach { subClass ->
-                                if (count >= args.maxResults) return@forEach
+                                if (count >= limit) return@forEach
                                 add(buildJsonObject {
                                     put("relation", if (psiClass.isInterface) "implements" else "extends")
                                     psiClassToEntries(this, subClass)

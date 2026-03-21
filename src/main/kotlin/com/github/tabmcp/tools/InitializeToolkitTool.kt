@@ -65,8 +65,9 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 ### Code Relationships
 - **find_referencing_symbols** — find all usages of a method/field (like Find Usages)
   `find_referencing_symbols(symbolName="authenticate", className="com.example.AuthService")`
-- **get_type_hierarchy** — inheritance chain; hierarchyType: "super" / "sub" / "both"
+- **get_type_hierarchy** — inheritance chain; hierarchyType: "super" / "sub" / "both"; maxResults=0 for no limit
   `get_type_hierarchy(className="com.example.BaseController", hierarchyType="sub")`
+  `get_type_hierarchy(className="com.example.Repository", hierarchyType="sub", maxResults=0)`
 
 ---
 
