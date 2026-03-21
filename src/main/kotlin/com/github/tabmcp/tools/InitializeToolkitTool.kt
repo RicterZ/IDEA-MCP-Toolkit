@@ -29,100 +29,72 @@ class InitializeToolkitTool : AbstractMcpTool<InitializeToolkitArgs>(InitializeT
 
     override fun handle(project: Project, args: InitializeToolkitArgs): Response {
         val instructions = """
-# IDEA MCP Toolkit — Instructions Manual
+# IDEA MCP Toolkit
 
-You have access to the IDEA MCP Toolkit, a set of code intelligence tools backed by JetBrains IDEA's
-full PSI (Program Structure Interface) index. This means you can search across the entire project,
-including all dependency JARs, decompiled .class files, and source files.
+Backed by JetBrains IDEA's full PSI index — searches project sources AND dependency JARs.
+Never ask the user to paste code; use the tools to find and read it yourself.
 
-## IMPORTANT: Always read this before starting work
-This is the IDEA MCP Toolkit. It provides tools to read files, search symbols, inspect type hierarchies,
-find usages, and more — all powered by the live IDEA index. Use these tools instead of guessing or
-asking the user to paste code.
+Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 
 ---
 
-## Available Tools & When to Use Each
+## Tools
 
-### 🔍 Discovery (start here)
-- **find_everywhere** — Your first stop. Like double-Shift in IDEA. Searches classes, methods, fields,
-  files, and Spring MVC URLs simultaneously. Use this when you don't know where something is.
-- **find_symbol** — When you know a class name. Returns qualified name + file path for use with other tools.
-  Searches both project sources AND dependency JARs.
-- **find_in_files** — Full-text search across project files (like Cmd+Shift+F). Use for string literals,
-  annotations, comments, or any text pattern that isn't a symbol name.
+### Discovery
+- **find_everywhere** — broad search (classes, methods, fields, files, Spring URLs)
+  `find_everywhere(query="UserService")`
+  `find_everywhere(query="/api/login", searchSpringUrls=true)`
+- **find_symbol** — locate a class by name, returns qualified name + path
+  `find_symbol(className="Response")`
+  `find_symbol(className="com.example.UserService")`
+- **find_in_files** — full-text search (string literals, annotations, comments)
+  `find_in_files(pattern="@PreAuthorize", filePattern="*.java")`
 
-### 📄 Reading Files
-- **get_symbols_overview** — ALWAYS use this before reading a file. Returns the class structure
-  (methods, fields, inner classes) without reading full content. Token-efficient.
-- **get_file_text_by_path** — Read a file's full content. Supports:
-  - Relative paths (relative to project root): `src/main/kotlin/com/example/Foo.kt`
-  - Absolute paths: `/Users/me/project/src/...`
-  - JAR-internal paths: `BOOT-INF/lib/foo.jar!/com/example/Bar.class`
-- **get_tab_file_text** — Read a file that's already open in a tab (non-destructive, no tab switching).
-- **list_open_tabs** — See what files are currently open in the editor.
-- **get_open_in_editor_file_text** — Read whatever the user is currently looking at.
+### Reading Files
+- **get_symbols_overview** — class structure without full content; call this BEFORE get_file_text_by_path
+  `get_symbols_overview(path="src/main/java/com/example/UserService.java")`
+  `get_symbols_overview(path="BOOT-INF/lib/common.jar!/com/example/model/User.class")`
+- **get_file_text_by_path** — full file content; supports relative, absolute, and JAR-internal paths
+  `get_file_text_by_path(path="src/main/java/com/example/UserService.java")`
+  `get_file_text_by_path(path="BOOT-INF/lib/common.jar!/com/example/model/User.class")`
+- **list_open_tabs** — list currently open editor tabs
+- **get_tab_file_text** — read an open tab without switching focus
+  `get_tab_file_text(path="src/main/java/com/example/Foo.java")`
+- **get_open_in_editor_file_text** — read the file the user is currently viewing
 
-### 🔗 Code Relationships
-- **find_referencing_symbols** — Find all usages of a method/field (like Find Usages). Provide
-  `className` to avoid ambiguity. Returns file, line, and surrounding code context.
-- **get_type_hierarchy** — Get the inheritance chain of a class. Use `hierarchyType`:
-  - `"super"` — parent classes and interfaces
-  - `"sub"` — all subclasses and implementations
-  - `"both"` — full hierarchy (default)
-
----
-
-## Recommended Workflows
-
-### Workflow 1: "Where is X defined?"
-1. `find_everywhere(query="X")` or `find_symbol(className="X")`
-2. Note the file path from the result
-3. `get_symbols_overview(path="...")` to understand the class structure
-4. `get_file_text_by_path(path="...")` only if you need the full implementation
-
-### Workflow 2: "How is X used?"
-1. `find_symbol(className="ClassName")` to get the fully qualified name
-2. `find_referencing_symbols(symbolName="methodName", className="com.example.ClassName")`
-3. Read specific files using `get_file_text_by_path` as needed
-
-### Workflow 3: "What implements interface X?"
-1. `find_symbol(className="X")` to confirm the qualified name
-2. `get_type_hierarchy(className="com.example.X", hierarchyType="sub")`
-3. Read specific implementations as needed
-
-### Workflow 4: "How does this Spring endpoint work?"
-1. `find_everywhere(query="/api/path", searchSpringUrls=true)` to locate the handler
-2. `get_symbols_overview(path="...")` on the controller class
-3. `find_referencing_symbols` to find callers of service methods
+### Code Relationships
+- **find_referencing_symbols** — find all usages of a method/field (like Find Usages)
+  `find_referencing_symbols(symbolName="authenticate", className="com.example.AuthService")`
+- **get_type_hierarchy** — inheritance chain; hierarchyType: "super" / "sub" / "both"
+  `get_type_hierarchy(className="com.example.BaseController", hierarchyType="sub")`
 
 ---
 
-## Best Practices
+## Workflows
 
-1. **Always call `get_symbols_overview` before `get_file_text_by_path`** — it saves tokens and often
-   gives you enough information without reading the full file.
+**Locate a class → understand it → read details**
+1. `find_symbol(className="OrderService")` → get path
+2. `get_symbols_overview(path="src/.../OrderService.java")` → scan methods/fields
+3. `get_file_text_by_path(path="src/.../OrderService.java")` → only if full body needed
 
-2. **Provide `className` to `find_referencing_symbols`** — without it, results may include unrelated
-   symbols with the same method name from other classes.
+**Find all usages of a method**
+1. `find_symbol(className="PaymentService")` → confirm qualified name
+2. `find_referencing_symbols(symbolName="charge", className="com.example.PaymentService")`
 
-3. **Use relative paths** — all tools that accept a path support paths relative to the project root.
-   Prefer relative over absolute for clarity.
+**Find all implementations of an interface**
+1. `get_type_hierarchy(className="com.example.Repository", hierarchyType="sub")`
 
-4. **`find_everywhere` vs `find_symbol`** — use `find_everywhere` for broad discovery; use `find_symbol`
-   when you know the exact class name and want the qualified name + path quickly.
-
-5. **Dependency JARs are fully indexed** — you can read decompiled `.class` files from JARs using
-   `get_file_text_by_path` with the JAR path syntax:
-   `BOOT-INF/lib/some-library.jar!/com/example/SomeClass.class`
-
-6. **Don't ask the user to paste code** — use the tools to find and read it yourself.
+**Trace a Spring endpoint**
+1. `find_everywhere(query="/api/orders", searchSpringUrls=true)` → get handler class + path
+2. `get_symbols_overview(path="src/.../OrderController.java")`
+3. `find_referencing_symbols(symbolName="createOrder", className="com.example.OrderController")`
 
 ---
 
-## Project Info
-- Project: ${project.name}
-- Base path: ${project.basePath ?: "unknown"}
+## Rules
+- Always `get_symbols_overview` before `get_file_text_by_path` to save tokens
+- Always pass `className` to `find_referencing_symbols` to avoid ambiguous matches
+- Paths are relative to project root; JAR syntax: `BOOT-INF/lib/foo.jar!/com/example/Bar.class`
         """.trimIndent()
 
         return Response(status = instructions)
