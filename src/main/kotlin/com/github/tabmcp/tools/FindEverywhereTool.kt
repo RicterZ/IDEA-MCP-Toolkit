@@ -206,7 +206,9 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                                 { mapping: UrlMappingElement ->
                                     if (count >= args.maxResults) return@processAnnotationMappings false
                                     val url = mapping.url ?: return@processAnnotationMappings true
-                                    if (!url.contains(query, ignoreCase = true)) return@processAnnotationMappings true
+                                    val normalizedQuery = query.trimStart('/')
+                                    val normalizedUrl = url.trimStart('/')
+                                    if (!normalizedUrl.contains(normalizedQuery, ignoreCase = true)) return@processAnnotationMappings true
 
                                     val navTarget = mapping.navigationTarget
                                     val vf = navTarget?.containingFile?.virtualFile
