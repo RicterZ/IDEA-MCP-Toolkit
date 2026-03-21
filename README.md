@@ -6,6 +6,7 @@ A comprehensive [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)
 
 | Tool | Description |
 |---|---|
+| `initialize_toolkit` | **Call this first.** Returns workflow instructions and best practices for using the toolkit |
 | `get_open_in_editor_file_text` | Read the currently active editor tab |
 | `get_file_text_by_path` | Read any file by path (relative, absolute, or JAR-internal) |
 | `list_open_tabs` | List all currently open editor tabs |
@@ -32,7 +33,7 @@ This implements the [MCP 2024-11-05 HTTP+SSE Transport](https://spec.modelcontex
    ```bash
    ./gradlew buildPlugin
    ```
-   Output: `build/distributions/IDEA-MCP-Toolkit-1.0.0.zip`
+   Output: `build/distributions/IDEA-MCP-Toolkit-1.0.5.zip`
 
 2. In IDEA: **Settings → Plugins → ⚙️ → Install Plugin from Disk...** → select the ZIP
 
@@ -53,6 +54,21 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 
 > **Note:** The port may vary. Check IDEA's built-in server port at **Settings → Build, Execution, Deployment → Debugger → Built-in server**.
+
+## Claude Code Configuration
+
+Add to `~/.claude.json` (under the `mcpServers` key):
+
+```json
+{
+  "mcpServers": {
+    "idea": {
+      "type": "sse",
+      "url": "http://localhost:63342/api/mcp/sse"
+    }
+  }
+}
+```
 
 ## Requirements
 
