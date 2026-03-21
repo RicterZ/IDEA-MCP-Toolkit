@@ -206,9 +206,7 @@ class FindEverywhereTool : AbstractMcpTool<FindEverywhereArgs>(FindEverywhereArg
                                 { mapping: UrlMappingElement ->
                                     if (count >= args.maxResults) return@processAnnotationMappings false
                                     val url = mapping.url ?: return@processAnnotationMappings true
-                                    // Normalize only when query has a leading slash (e.g. "/cmd/exec" → "cmd/exec")
-                                    // but keep bare "/" as-is so it only matches root-level URLs
-                                    val normalizedQuery = if (query.length > 1) query.trimStart('/') else query
+                                    val normalizedQuery = query.trimStart('/')
                                     val normalizedUrl = url.trimStart('/')
                                     if (!normalizedUrl.contains(normalizedQuery, ignoreCase = true)) return@processAnnotationMappings true
 
