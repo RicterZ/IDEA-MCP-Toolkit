@@ -1,12 +1,12 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
-    id("org.jetbrains.intellij.platform") version "2.5.0"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    id("org.jetbrains.kotlin.jvm") version "2.3.0"
+    id("org.jetbrains.intellij.platform") version "2.13.1"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.0"
 }
 
 group = "com.github.tabmcp"
-version = "1.0.5"
+version = "1.0.6"
 
 repositories {
     mavenCentral()
@@ -18,7 +18,6 @@ repositories {
 dependencies {
     intellijPlatform {
         local("/Applications/IntelliJ IDEA.app/Contents")
-        instrumentationTools()
         bundledPlugin("com.intellij.java")
         bundledPlugin("com.intellij.spring.mvc")
     }
@@ -29,7 +28,7 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "253.*"
+            untilBuild = "261.*"
         }
     }
     buildSearchableOptions = false
