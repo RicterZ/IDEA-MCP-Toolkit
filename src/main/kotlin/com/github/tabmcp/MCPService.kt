@@ -6,6 +6,7 @@ import com.github.tabmcp.tools.FindReferencingSymbolsTool
 import com.github.tabmcp.tools.FindSymbolTool
 import com.github.tabmcp.tools.GetCurrentFileTextTool
 import com.github.tabmcp.tools.GetFileTextByPathTool
+import com.github.tabmcp.tools.GetMethodSourceTool
 import com.github.tabmcp.tools.GetSymbolsOverviewTool
 import com.github.tabmcp.tools.GetTabFileTextTool
 import com.github.tabmcp.tools.GetTypeHierarchyTool
@@ -56,7 +57,8 @@ class MCPService : RestService() {
         FindEverywhereTool(),
         GetSymbolsOverviewTool(),
         FindReferencingSymbolsTool(),
-        GetTypeHierarchyTool()
+        GetTypeHierarchyTool(),
+        GetMethodSourceTool()
     )
 
     override fun getServiceName(): String = "mcp"

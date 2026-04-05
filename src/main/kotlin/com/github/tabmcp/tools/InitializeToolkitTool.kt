@@ -54,6 +54,9 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 - **get_symbols_overview** — class structure without full content; call this BEFORE get_file_text_by_path
   `get_symbols_overview(path="src/main/java/com/example/UserService.java")`
   `get_symbols_overview(path="BOOT-INF/lib/common.jar!/com/example/model/User.class")`
+- **get_method_source** — source code of a specific method (all overloads) by name; returns a JSON dict keyed by signature; use this instead of loading the whole file when you only need one method
+  `get_method_source(methodName="processOrder", className="com.example.OrderService")`
+  `get_method_source(methodName="processOrder")` — searches project-wide, keys include FQN prefix
 - **get_file_text_by_path** — full file content; supports relative, absolute, and JAR-internal paths
   `get_file_text_by_path(path="src/main/java/com/example/UserService.java")`
   `get_file_text_by_path(path="BOOT-INF/lib/common.jar!/com/example/model/User.class")`
@@ -76,7 +79,8 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 **Locate a class → understand it → read details**
 1. `find_symbol(className="OrderService")` → get path
 2. `get_symbols_overview(path="src/.../OrderService.java")` → scan methods/fields
-3. `get_file_text_by_path(path="src/.../OrderService.java")` → only if full body needed
+3. `get_method_source(methodName="placeOrder", className="com.example.OrderService")` → read a single method
+4. `get_file_text_by_path(path="src/.../OrderService.java")` → only if full file body needed
 
 **Find all usages of a method**
 1. `find_symbol(className="PaymentService")` → confirm qualified name
@@ -94,7 +98,8 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 
 ## Rules
 - Always `get_symbols_overview` before `get_file_text_by_path` to save tokens
-- Always pass `className` to `find_referencing_symbols` to avoid ambiguous matches
+- Use `get_method_source` when you only need one or a few methods — avoids loading the whole file
+- Always pass `className` to `find_referencing_symbols` and `get_method_source` to avoid ambiguous matches
 - Paths are relative to project root; JAR syntax: `BOOT-INF/lib/foo.jar!/com/example/Bar.class`
         """.trimIndent()
 
