@@ -134,10 +134,28 @@ class GetMethodSourceTool : AbstractMcpTool<GetMethodSourceArgs>(GetMethodSource
     }
 
     /**
-     * Return the full source text of the method if available,
-     * or a placeholder for bytecode-only entries (no source attached).
+     * Return the full source text of the method.
+     *
+     * For source files: psiMethod.text returns the original source directly.
+     * For .class files (bytecode): IDEA decompiles them via Fernflower; the decompiled
+     * PsiMethod lives in a ClsFileImpl and has no AST body, but navigationElement
+     * points to the corresponding node in the decompiled source — use that instead.
      */
-    private fun methodSource(method: PsiMethod): String =
-        if (method.body != null) method.text
-        else "[source not available — bytecode only]"
+    private fun methodSource(method: PsiMethod): String {
+        // Source file — body is present, .text is the original source
+        if (method.body != null) return method.text
+
+        // Bytecode / decompiled class — navigate to the decompiled representation
+        val nav = method.navigationElement
+        if (nav !== method && nav is PsiMethod) {
+            if (nav.body != null) return nav.text
+            // navigationElement may itself be in a decompiled file whose text is available
+            val navText = nav.text
+            if (navText.isNotBlank()) return navText
+        }
+
+        // Abstract / native / interface method with no body — return the declaration line
+        val text = method.text
+        return if (text.isNotBlank()) text else "[source not available]"
+    }
 }
