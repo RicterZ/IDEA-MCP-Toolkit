@@ -4,7 +4,9 @@ import com.github.tabmcp.AbstractMcpTool
 import com.github.tabmcp.Response
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.OrderEnumerator
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -19,22 +21,27 @@ data class FindInFilesArgs(
     val filePattern: String = "",   // e.g. "*.kt", "*.java", "" means all
     val isRegex: Boolean = false,
     val ignoreCase: Boolean = true,
-    val maxResults: Int = 50
+    val maxResults: Int = 50,
+    val includeLibraries: Boolean = false  // search .class files in dependency JARs
 )
 
 class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.serializer()) {
 
     override val name = "find_in_files"
     override val description = """
-        Searches for a text pattern inside all project source files (like Cmd+Shift+F in IDEA).
+        Searches for a text pattern inside project source files (like Cmd+Shift+F in IDEA).
         Returns matching file paths, line numbers, and the matching line content.
-        Supports plain text and regex search. Only searches project source files, not dependency JARs.
+        Supports plain text and regex search.
         Parameters:
           - pattern: the text or regex to search for (required)
           - filePattern: glob to filter files, e.g. "*.kt", "*.java" (optional, default: all files)
           - isRegex: treat pattern as a regular expression (default: false)
           - ignoreCase: case-insensitive search (default: true)
           - maxResults: maximum number of matches to return (default: 50); set to 0 for no limit
+          - includeLibraries: also search .class files in dependency JARs (default: false).
+            Searches raw bytecode for the keyword (constant pool contains UTF-8 strings for
+            class names, method names, field names, and string literals). Returns matching
+            file paths only (no line numbers). Very fast — no decompilation needed.
     """.trimIndent()
 
     override val inputSchema: JsonObject = buildJsonObject {
@@ -59,6 +66,12 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
             put("maxResults", buildJsonObject {
                 put("type", "integer")
                 put("description", "Maximum number of matches to return (default: 50); set to 0 for no limit")
+            })
+            put("includeLibraries", buildJsonObject {
+                put("type", "boolean")
+                put("description",
+                    "Also search .class files in dependency JARs for the keyword (default: false). " +
+                    "Searches raw bytecode — no decompilation needed. Returns file paths only.")
             })
         })
         put("required", buildJsonArray { add(JsonPrimitive("pattern")) })
@@ -125,8 +138,67 @@ class FindInFilesTool : AbstractMcpTool<FindInFilesArgs>(FindInFilesArgs.seriali
                     true
                 }
             }
+
+            // ── Phase 2: Library .class files (raw bytecode keyword search) ──
+            if (args.includeLibraries && count < limit) {
+                val searchBytes = args.pattern.toByteArray(Charsets.UTF_8)
+
+                runReadAction {
+                    val classRoots = OrderEnumerator.orderEntries(project)
+                        .withoutModuleSourceEntries()
+                        .classesRoots
+
+                    for (root in classRoots) {
+                        if (count >= limit) break
+                        VfsUtilCore.iterateChildrenRecursively(root, null) { vf ->
+                            if (count >= limit) return@iterateChildrenRecursively false
+                            if (vf.isDirectory || !vf.name.endsWith(".class")) {
+                                return@iterateChildrenRecursively true
+                            }
+                            if (fileRegex != null && !fileRegex.containsMatchIn(vf.name)) {
+                                return@iterateChildrenRecursively true
+                            }
+
+                            try {
+                                val bytes = vf.contentsToByteArray()
+                                if (containsBytes(bytes, searchBytes, args.ignoreCase)) {
+                                    add(buildJsonObject {
+                                        put("path", vf.path)
+                                        put("inLibrary", true)
+                                    })
+                                    count++
+                                }
+                            } catch (_: Exception) { }
+                            true
+                        }
+                    }
+                }
+            }
         }
 
         return Response(status = results.toString())
+    }
+
+    /**
+     * Check if [haystack] contains [needle] bytes.
+     * When [ignoreCase] is true, converts both to lowercase ASCII before comparison.
+     */
+    private fun containsBytes(haystack: ByteArray, needle: ByteArray, ignoreCase: Boolean): Boolean {
+        if (needle.isEmpty()) return true
+        if (haystack.size < needle.size) return false
+
+        if (ignoreCase) {
+            val haystackStr = String(haystack, Charsets.ISO_8859_1).lowercase()
+            val needleStr = String(needle, Charsets.ISO_8859_1).lowercase()
+            return haystackStr.contains(needleStr)
+        }
+
+        outer@ for (i in 0..haystack.size - needle.size) {
+            for (j in needle.indices) {
+                if (haystack[i + j] != needle[j]) continue@outer
+            }
+            return true
+        }
+        return false
     }
 }

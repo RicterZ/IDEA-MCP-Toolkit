@@ -49,6 +49,10 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
   `find_symbol(className="com.example.UserService")`
 - **find_in_files** — full-text search (string literals, annotations, comments)
   `find_in_files(pattern="@PreAuthorize", filePattern="*.java")`
+  `find_in_files(pattern="loginSCSSO", includeLibraries=true)` — also search .class files in JARs
+  When `includeLibraries=true`, searches raw bytecode of .class files in dependency JARs
+  (no decompilation — matches against constant pool strings: class/method/field names, string literals).
+  Library results return file paths only (no line numbers).
 
 ### Reading Files
 - **get_symbols_overview** — class structure without full content; call this BEFORE get_file_text_by_path
@@ -100,6 +104,7 @@ Project: ${project.name}  |  Base path: ${project.basePath ?: "unknown"}
 - Always `get_symbols_overview` before `get_file_text_by_path` to save tokens
 - Use `get_method_source` when you only need one or a few methods — avoids loading the whole file
 - Always pass `className` to `find_referencing_symbols` and `get_method_source` to avoid ambiguous matches
+- Use `find_in_files(includeLibraries=true)` to grep keyword in dependency JAR .class files (fast, no decompilation)
 - Paths are relative to project root; JAR syntax: `BOOT-INF/lib/foo.jar!/com/example/Bar.class`
         """.trimIndent()
 
